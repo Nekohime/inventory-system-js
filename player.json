@@ -1,7 +1,7 @@
 {
 	"items":[
 		{"amount":5,"id":"useless_dust"},
-		{ "data":{"bonus_dmg":1337},"id":"wooden_stick" },
+		{ "id":"wooden_stick", "data":{"bonus_dmg":1337} },
 		{ "id":"wooden_stick" },
 		{"id":"strawberry"}
 	]

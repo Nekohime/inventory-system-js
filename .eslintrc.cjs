@@ -16,13 +16,7 @@ module.exports = {
   'plugins': [
     'vue',
     'simple-import-sort',
-    'jsdoc',
+
   ],
-  'rules': {
-    'simple-import-sort/imports': 'error',
-    'simple-import-sort/exports': 'error',
-  },
-  "extends": [
-    'plugin:jsdoc/recommended',
-  ],
+
 };

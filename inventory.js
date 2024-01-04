@@ -1,5 +1,7 @@
-#!/usr/bin/env node
 import {readFileSync} from 'fs';
+
+import ItemDB from './item-db.js';
+
 // TODO: hasItem(id, itemData = null) - itemData support
 //       TODO: Lookup Deep object equality
 // TODO: takeItem(id, amount, itemData = null) - itemData support
@@ -13,31 +15,27 @@ import {readFileSync} from 'fs';
 /**
  * Class representing a player's inventory.
  */
-class Inventory {
+export default class Inventory {
   /**
    * Creates an instance of Inventory.
    */
   constructor() {
-    this.itemDB = {};
-    this.playerData = {};
-    this.inventory = [];
-    this.isDebugMode = true;
-    this.inventoryFile = null;
-    this.itemDB = this.getJSON('itemsdb.json');
+    this.itemDB = ItemDB.getItemDB();
+    // this.playerData = null;
+    this.inventory = null;
   }
 
   /**
    * Sets the player's inventory based on a specified file.
-   * @param {string} file - The file path of the player's inventory.
+   * @param {string} inventoryFile - The file path of the player's inventory.
    */
-  setInventory(file) {
-    this.inventoryFile = file;
-    this.inventory = this.getJSON(this.inventoryFile).items;
+  setInventory(inventoryFile) {
+    this.inventory = this.getJSON(inventoryFile).items;
   }
 
   /**
    * Returns the player's current inventory.
-   * @returns {Array} - The player's inventory.
+   * @return {Array} - The player's inventory.
    */
   getInventory() {
     return this.inventory;
@@ -66,10 +64,6 @@ class Inventory {
         const newItem = itemData ? {id, data: itemData} : {id};
         this.inventory.push(newItem);
       }
-    }
-
-    if (!this.isDebugMode) {
-      this.savePlayerInventory();
     }
   }
 
@@ -112,10 +106,6 @@ class Inventory {
       const index = indicesToRemove.pop();
       this.inventory.splice(index, 1);
     }
-
-    if (!this.isDebugMode) {
-      this.savePlayerInventory();
-    }
   }
 
   /**
@@ -143,133 +133,160 @@ class Inventory {
     } else {
       this.inventory.splice(idx, 1);
     }
-
-    if (!this.isDebugMode) {
-      this.savePlayerInventory();
-    }
   }
 
   /**
    * Checks if the player has a certain item in their inventory.
+   * Will return the amount regardless of extra data.
+   *  Will also return the amount if extra data is given.
    * @param {string} id - The ID of the item.
-   * @returns {number} - The total number of items found in the inventory.
+   * @param {any} [data=null] - Optional data associated with the item.
+   * @return {[number, number[]]} - An array containing the total number
+   *  of items found in the inventory and an array of indices of matching items.
    */
-  hasItem(id) {
-    // Retrieve item information from the database based on the given ID.
+  hasItem(id, data = null) {
+  // Retrieve item information from the database based on the given ID.
     const itemInDB = this.itemDB[id];
 
-    // Initialize a variable to store the total number of items found.
+    // If the item is not found in the database, return 0.
+    if (!itemInDB) {
+      return [0, []];
+    }
+
+    // Initialize a variable to store the total number of matching items found.
     let totalAmount = 0;
+    // Initialize an array to store the indices of matching items.
+    const matchingIndices = [];
 
     // Iterate through the player's inventory
     //  to find the item with the specified ID.
-    for (const item of this.getInventory()) {
-      // Check if we find an item
-      //  with the same ID as the one we are looking for.
+    for (let i = 0; i < this.getInventory().length; i++) {
+      const item = this.getInventory()[i];
+
+      // Check if we find an item with the same ID as the one we are looking for
       if (item.id === id) {
+      // Check if the optional 'data' parameter is provided.
+        if (data !== null) {
+        // Check if the item has a 'data' property
+        //  and if it matches the provided data.
+          if (!item.data || !this.deepEqual(item.data, data)) {
+            continue; // Skip to the next iteration if 'data' doesn't match.
+          }
+        }
+
         // If the item is stackable,
         //  add the item's stack size to the total amount.
-        if (itemInDB.stackable) {
-          totalAmount += item.amount;
-        } else {
-          // If the item is not stackable,
-          //  increment the total amount by 1 (found one item).
-          totalAmount += 1;
-        }
+        // If the item is not stackable,
+        //  increment the total amount by 1 (found one item).
+        totalAmount += itemInDB.stackable ? item.amount : 1;
+        // Store the index of the matching item.
+        matchingIndices.push(i);
       }
     }
 
-    // Return the total number of items found in the inventory.
-    return totalAmount;
+    // Return an array with the total number of matching items
+    //  and the array of indices.
+    return [totalAmount, matchingIndices];
   }
+
+  /**
+   * Checks if the player has a certain item in their inventory.
+   * Will strict check the data (or lack thereof)
+ * Checks if the player has a certain item in their inventory.
+ * Will strict check the data (or lack thereof)
+ * @param {string} id - The ID of the item.
+ * @param {any} [data=null] - Optional data associated with the item.
+ * @return {[number, number[]]} - An array containing the total number
+ *  of items found in the inventory and an array of indices of matching items.
+ */
+  hasItemStrict(id, data = null) {
+    // Retrieve item information from the database based on the given ID.
+    const itemInDB = this.itemDB[id];
+
+    // If the item is not found in the database, return 0.
+    if (!itemInDB) {
+      return [0, []];
+    }
+
+    // Initialize a variable to store the total number of matching items found.
+    let totalAmount = 0;
+    // Initialize an array to store the indices of matching items.
+    const matchingIndices = [];
+
+    // Iterate through the player's inventory to find the item
+    //  with the specified ID.
+    for (let i = 0; i < this.getInventory().length; i++) {
+      const item = this.getInventory()[i];
+
+      // Check if we find an item with the same ID as the one we are looking for
+      if (item.id === id) {
+        // Check if the optional 'data' parameter is provided.
+        if (data !== null) {
+          // Check if the item has a 'data' property and if it matches
+          //  the provided data.
+          if (!item.data || !this.deepEqual(item.data, data)) {
+            continue; // Skip to the next iteration if 'data' doesn't match.
+          }
+        } else {
+          // If 'data' is null, check if the item has no 'data' property.
+          if (item.data !== undefined) {
+            continue; // Skip to the next iteration if 'data' is present.
+          }
+        }
+
+        // If the item is stackable,
+        //  add the item's stack size to the total amount.
+        // If the item is not stackable,
+        //  increment the total amount by 1 (found one item).
+        totalAmount += itemInDB.stackable ? item.amount : 1;
+        // Store the index of the matching item.
+        matchingIndices.push(i);
+      }
+    }
+
+    // Return an array with the total number of matching items
+    //  and the array of indices.
+    return [totalAmount, matchingIndices];
+  }
+
 
   /**
    * Returns the item at the specified index in the player's inventory.
    * @param {number} idx - The index of the item.
-   * @returns {object} - The item at the specified index.
+   * @return {object} - The item at the specified index.
    */
   getItemAtIndex(idx) {
     return this.getInventory()[idx];
   }
-  /**
-   * Returns the name of the item.
-   * @param {object} item - The item object.
-   * @returns {string} - The name of the item.
-   */
-  getItemName(item) {
-    return this.itemDB[item.id].name;
-  }
 
-  /**
-   * Returns the type of the item.
-   * @param {object} item - The item object.
-   * @returns {string} - The type of the item.
-   */
-  getItemType(item) {
-    return this.itemDB[item.id].type;
-  }
-
-  /**
-   * Returns the quality of the item.
-   * @param {object} item - The item object.
-   * @returns {string} - The quality of the item.
-   */
-  getItemQuality(item) {
-    return this.itemDB[item.id].quality;
-  }
-
-  /**
-   * Returns the examine description of the item.
-   * @param {object} item - The item object.
-   * @returns {string} - The examine description of the item.
-   */
-  getItemExamine(item) {
-    return this.itemDB[item.id].examine;
-  }
 
   /**
    * Returns the amount of the item in the player's inventory.
    * Consider removing and use hasItem directly instead
    * @param {object} item - The item object.
-   * @returns {number} - The amount of the item
+   * @return {number} - The amount of the item
    *  (stackables: amount in stack, non-stackables: amount of stacks).
    */
   getItemAmount(item) {
-    return hasItem(item.id);
+    return this.hasItem(item.id);
   }
 
   /**
    * Returns custom data associated with an item.
    * @param {object} item - The item object.
-   * @returns {object} - Custom data associated with the item.
+   * @return {object} - Custom data associated with the item.
    */
   getItemData(item) {
     return item.data || {};
   }
 
   /**
-   * Returns the healing value of a food item.
-   * @param {object} item - The food item object.
-   * @returns {number} - The healing value of the food item.
-   */
-  getFoodHealth(item) {
-    return this.itemDB[item.id]?.health || 0;
-  }
-
-  /**
-   * Retrieves item information from the item database based on the given ID.
-   * @param {string} id - The ID of the item.
-   * @returns {object} - Item information from the database.
-   */
-  getItemFromDB(id) {
-    return this.itemDB[id];
-  }
-
-  /**
    * Reads and parses a JSON file at the specified path.
    * @param {string} path - The file path.
-   * @returns {object | null} The parsed JSON object, or null if there was an error reading or parsing the file.
-   * @throws {Error} If there is an error during file reading or parsing (error message in the console).
+   * @return {object | null} The parsed JSON object,
+   *  or null if there was an error reading or parsing the file.
+   * @throws {Error} If there is an error during file reading or parsing
+   *  (error message in the console).
    */
   getJSON(path) {
     try {
@@ -280,7 +297,9 @@ class Inventory {
       return JSON.parse(fileContent);
     } catch (error) {
       // Handle errors during file reading or parsing.
-      console.error(`[${path}] Error reading or parsing file: ${error.message}`);
+      console.error(
+          `[${path}] Error reading or parsing file: ${error.message}`,
+      );
 
       // Return null in case of an error.
       return null;
@@ -308,8 +327,48 @@ class Inventory {
     // file.store_string(JSON.stringify(json));
     // file.close();
   }
+
   /**
-   * Unit test for the Inventory class.
+   * Recursively checks if two objects are deeply equal.
+   *
+   * @param {any} obj1 - The first object to compare.
+   * @param {any} obj2 - The second object to compare.
+   * @return {boolean} - Returns true if the objects are deeply equal,
+   *  otherwise false.
+   */
+  deepEqual(obj1, obj2) {
+    // Check if both are objects
+    if (typeof obj1 !== 'object' || typeof obj2 !== 'object') {
+      return obj1 === obj2;
+    }
+
+    // Check if both are null
+    if (obj1 === null && obj2 === null) {
+      return true;
+    }
+
+    // Check if they have the same set of properties
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+
+    if (keys1.length !== keys2.length ||
+      !keys1.every((key) => keys2.includes(key))) {
+      return false;
+    }
+
+    // Recursively check each property
+    for (const key of keys1) {
+      if (!this.deepEqual(obj1[key], obj2[key])) {
+        return false;
+      }
+    }
+
+    // If all checks pass, the objects are deeply equal
+    return true;
+  }
+
+  /**
+   * "Unit test" for the Inventory class.
    */
   unitTest() {
     const inventory = new Inventory();
@@ -328,12 +387,3 @@ class Inventory {
         inventory.hasItem('strawberry') === 0);
   }
 }
-
-// Unit Test
-const inventory = new Inventory();
-inventory.setInventory('player.json');
-
-console.log(inventory.getInventory());
-
-// console.log(inventory.getFoodHealth('strawberry'));
-console.log(inventory.getItemAtIndex(0));
