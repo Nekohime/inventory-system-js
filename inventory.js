@@ -136,34 +136,29 @@ export default class Inventory {
   }
 
   /**
-   * Checks if the player has a certain item in their inventory.
-   * Will return the amount regardless of extra data.
-   *  Will also return the amount if extra data is given.
-   * @param {string} id - The ID of the item.
-   * @param {any} [data=null] - Optional data associated with the item.
-   * @return {[number, number[]]} - An array containing the total number
-   *  of items found in the inventory and an array of indices of matching items.
-   */
+ * Checks if the player has a certain item in their inventory.
+ * Will return true regardless of extra data.
+ * Will also return true if extra data is given.
+ * @param {string} id - The ID of the item.
+ * @param {any} [data=null] - Optional data associated with the item.
+ * @return {boolean} - Returns true if the item exists in the inventory.
+ */
   hasItem(id, data = null) {
   // Retrieve item information from the database based on the given ID.
     const itemInDB = this.itemDB[id];
 
-    // If the item is not found in the database, return 0.
+    // If the item is not found in the database, return false.
     if (!itemInDB) {
-      return [0, []];
+      return false;
     }
-
-    // Initialize a variable to store the total number of matching items found.
-    let totalAmount = 0;
-    // Initialize an array to store the indices of matching items.
-    const matchingIndices = [];
 
     // Iterate through the player's inventory
     //  to find the item with the specified ID.
     for (let i = 0; i < this.getInventory().length; i++) {
       const item = this.getInventory()[i];
 
-      // Check if we find an item with the same ID as the one we are looking for
+      // Check if we find an item with the same ID
+      //  as the one we are looking for.
       if (item.id === id) {
       // Check if the optional 'data' parameter is provided.
         if (data !== null) {
@@ -174,56 +169,238 @@ export default class Inventory {
           }
         }
 
-        // If the item is stackable,
-        //  add the item's stack size to the total amount.
-        // If the item is not stackable,
-        //  increment the total amount by 1 (found one item).
-        totalAmount += itemInDB.stackable ? item.amount : 1;
+        // If the item is found, return true.
+        return true;
+      }
+    }
+
+    // If the item is not found, return false.
+    return false;
+  }
+
+  /**
+ * Checks if the player has a certain item in their inventory.
+ * Will strict check the data (or lack thereof).
+ * @param {string} id - The ID of the item.
+ * @param {any} [data=null] - Optional data associated with the item.
+ * @return {boolean} - Returns true if the item exists in the inventory.
+ */
+  hasItemStrict(id, data = null) {
+  // Retrieve item information from the database based on the given ID.
+    const itemInDB = this.itemDB[id];
+
+    // If the item is not found in the database, return false.
+    if (!itemInDB) {
+      return false;
+    }
+
+    // Iterate through the player's inventory
+    //  to find the item with the specified ID.
+    for (let i = 0; i < this.getInventory().length; i++) {
+      const item = this.getInventory()[i];
+
+      // Check if we find an item with the same ID
+      //  as the one we are looking for.
+      if (item.id === id) {
+      // Check if the optional 'data' parameter is provided.
+        if (data !== null) {
+        // Check if the item has a 'data' property
+        //  and if it matches the provided data.
+          if (!item.data || !this.deepEqual(item.data, data)) {
+            continue; // Skip to the next iteration if 'data' doesn't match.
+          }
+        } else {
+        // If 'data' is null, check if the item has no 'data' property.
+          if (item.data !== undefined) {
+            continue; // Skip to the next iteration if 'data' is present.
+          }
+        }
+
+        // If the item is found, return true.
+        return true;
+      }
+    }
+
+    // If the item is not found, return false.
+    return false;
+  }
+
+  /**
+   * Checks if the player has a certain item in their inventory.
+   * Will return the array of indices regardless of extra data.
+   * Will also return the array of indices if extra data is given.
+   * @param {string} id - The ID of the item.
+   * @param {any} [data=null] - Optional data associated with the item.
+   * @return {number[]} - An array of indices of matching items.
+   */
+  findItem(id, data = null) {
+    // Retrieve item information from the database based on the given ID.
+    const itemInDB = this.itemDB[id];
+
+    // If the item is not found in the database, return an empty array.
+    if (!itemInDB) {
+      return [];
+    }
+
+    // Initialize an array to store the indices of matching items.
+    const matchingIndices = [];
+
+    // Iterate through the player's inventory
+    //  to find the item with the specified ID.
+    for (let i = 0; i < this.getInventory().length; i++) {
+      const item = this.getInventory()[i];
+
+      // Check if we find an item with the same ID
+      //  as the one we are looking for.
+      if (item.id === id) {
+        // Check if the optional 'data' parameter is provided.
+        if (data !== null) {
+          // Check if the item has a 'data' property
+          //  and if it matches the provided data.
+          if (!item.data || !this.deepEqual(item.data, data)) {
+            continue; // Skip to the next iteration if 'data' doesn't match.
+          }
+        }
+
         // Store the index of the matching item.
         matchingIndices.push(i);
       }
     }
 
-    // Return an array with the total number of matching items
-    //  and the array of indices.
-    return [totalAmount, matchingIndices];
+    // Return the array of indices.
+    return matchingIndices;
   }
 
   /**
    * Checks if the player has a certain item in their inventory.
-   * Will strict check the data (or lack thereof)
- * Checks if the player has a certain item in their inventory.
- * Will strict check the data (or lack thereof)
- * @param {string} id - The ID of the item.
- * @param {any} [data=null] - Optional data associated with the item.
- * @return {[number, number[]]} - An array containing the total number
- *  of items found in the inventory and an array of indices of matching items.
- */
-  hasItemStrict(id, data = null) {
+   * Will strict check the data (or lack thereof).
+   * @param {string} id - The ID of the item.
+   * @param {any} [data=null] - Optional data associated with the item.
+   * @return {number[]} - An array of indices of matching items.
+   */
+  findItemStrict(id, data = null) {
+    // Retrieve item information from the database based on the given ID.
+    const itemInDB = this.itemDB[id];
+
+    // If the item is not found in the database, return an empty array.
+    if (!itemInDB) {
+      return [];
+    }
+
+    // Initialize an array to store the indices of matching items.
+    const matchingIndices = [];
+
+    // Iterate through the player's inventory
+    //  to find the item with the specified ID.
+    for (let i = 0; i < this.getInventory().length; i++) {
+      const item = this.getInventory()[i];
+
+      // Check if we find an item with the same ID
+      //  as the one we are looking for.
+      if (item.id === id) {
+        // Check if the optional 'data' parameter is provided.
+        if (data !== null) {
+          // Check if the item has a 'data' property
+          //  and if it matches the provided data.
+          if (!item.data || !this.deepEqual(item.data, data)) {
+            continue; // Skip to the next iteration if 'data' doesn't match.
+          }
+        } else {
+          // If 'data' is null, check if the item has no 'data' property.
+          if (item.data !== undefined) {
+            continue; // Skip to the next iteration if 'data' is present.
+          }
+        }
+
+        // Store the index of the matching item.
+        matchingIndices.push(i);
+      }
+    }
+
+    // Return the array of indices.
+    return matchingIndices;
+  }
+
+  /**
+   * Counts the total number of a certain item in the player's inventory.
+   * Will return the amount regardless of extra data.
+   * Will also return the amount if extra data is given.
+   * @param {string} id - The ID of the item.
+   * @param {any} [data=null] - Optional data associated with the item.
+   * @return {number} - The total number of items found in the inventory.
+   */
+  countItem(id, data = null) {
     // Retrieve item information from the database based on the given ID.
     const itemInDB = this.itemDB[id];
 
     // If the item is not found in the database, return 0.
     if (!itemInDB) {
-      return [0, []];
+      return 0;
     }
 
     // Initialize a variable to store the total number of matching items found.
     let totalAmount = 0;
-    // Initialize an array to store the indices of matching items.
-    const matchingIndices = [];
 
-    // Iterate through the player's inventory to find the item
-    //  with the specified ID.
+    // Iterate through the player's inventory
+    //  to find the item with the specified ID.
     for (let i = 0; i < this.getInventory().length; i++) {
       const item = this.getInventory()[i];
 
-      // Check if we find an item with the same ID as the one we are looking for
+      // Check if we find an item with the same ID
+      //  as the one we are looking for.
       if (item.id === id) {
         // Check if the optional 'data' parameter is provided.
         if (data !== null) {
-          // Check if the item has a 'data' property and if it matches
-          //  the provided data.
+          // Check if the item has a 'data' property
+          //  and if it matches the provided data.
+          if (!item.data || !this.deepEqual(item.data, data)) {
+            continue; // Skip to the next iteration if 'data' doesn't match.
+          }
+        }
+
+        // If the item is stackable,
+        //  add the item's stack size to the total amount.
+        // If the item is not stackable,
+        //  increment the total amount by 1 (found one item).
+        totalAmount += itemInDB.stackable ? item.amount : 1;
+      }
+    }
+
+    // Return the total number of matching items.
+    return totalAmount;
+  }
+
+  /**
+   * Counts the total number of a certain item in the player's inventory.
+   * Will strict check the data (or lack thereof).
+   * @param {string} id - The ID of the item.
+   * @param {any} [data=null] - Optional data associated with the item.
+   * @return {number} - The total number of items found in the inventory.
+   */
+  countItemStrict(id, data = null) {
+    // Retrieve item information from the database based on the given ID.
+    const itemInDB = this.itemDB[id];
+
+    // If the item is not found in the database, return 0.
+    if (!itemInDB) {
+      return 0;
+    }
+
+    // Initialize a variable to store the total number of matching items found.
+    let totalAmount = 0;
+
+    // Iterate through the player's inventory
+    //  to find the item with the specified ID.
+    for (let i = 0; i < this.getInventory().length; i++) {
+      const item = this.getInventory()[i];
+
+      // Check if we find an item with the same ID
+      //  as the one we are looking for.
+      if (item.id === id) {
+        // Check if the optional 'data' parameter is provided.
+        if (data !== null) {
+          // Check if the item has a 'data' property
+          //  and if it matches the provided data.
           if (!item.data || !this.deepEqual(item.data, data)) {
             continue; // Skip to the next iteration if 'data' doesn't match.
           }
@@ -239,14 +416,11 @@ export default class Inventory {
         // If the item is not stackable,
         //  increment the total amount by 1 (found one item).
         totalAmount += itemInDB.stackable ? item.amount : 1;
-        // Store the index of the matching item.
-        matchingIndices.push(i);
       }
     }
 
-    // Return an array with the total number of matching items
-    //  and the array of indices.
-    return [totalAmount, matchingIndices];
+    // Return the total number of matching items.
+    return totalAmount;
   }
 
 
