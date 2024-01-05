@@ -1,0 +1,7 @@
+{
+	"items":[
+		{"amount":10,"id":"useless_dust"},
+		{ "id":"wooden_stick", "data": {"bonus_dmg":69} },
+		{"id":"strawberry"}
+	]
+}

@@ -50,7 +50,7 @@ export default class Inventory {
    */
   giveItem(id, amount = 1, itemData = null) {
     const itemInDB = this.itemDB[id];
-
+    if (amount <= 0) amount = 1;
     if (itemInDB.stackable) {
       const existingStack = this.inventory.find((item) => item.id === id);
 
@@ -137,8 +137,8 @@ export default class Inventory {
 
   /**
  * Checks if the player has a certain item in their inventory.
- * Will return true regardless of extra data.
- * Will also return true if extra data is given.
+ * If extra data is not provided, it will check regardless for all items of
+ *  the provided ID.
  * @param {string} id - The ID of the item.
  * @param {any} [data=null] - Optional data associated with the item.
  * @return {boolean} - Returns true if the item exists in the inventory.
@@ -430,7 +430,9 @@ export default class Inventory {
    * @return {object} - The item at the specified index.
    */
   getItemAtIndex(idx) {
-    return this.getInventory()[idx];
+    const value = this.getInventory()[idx];
+    if (!value.amount) value.amount = 1;
+    return value;
   }
 
 
